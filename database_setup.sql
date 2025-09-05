@@ -14,6 +14,7 @@ BEGIN
         email NVARCHAR(100) NOT NULL UNIQUE,
         gender NVARCHAR(10) CHECK (gender IN ('Male', 'Female', 'Other')),
         age INT CHECK (age >= 13 AND age <= 120),
+        available_credits INT DEFAULT 100 NOT NULL,
         created_at DATETIME2 DEFAULT GETDATE(),
         updated_at DATETIME2 DEFAULT GETDATE()
     );

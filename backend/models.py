@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     email: str
     gender: str
     age: int
+    available_credits: int
     username: str
     created_at: datetime
     

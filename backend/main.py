@@ -63,13 +63,13 @@ async def register_user(user: UserRegistration):
     
     # Insert user into users table
     insert_user_query = """
-        INSERT INTO users (first_name, last_name, email, gender, age)
+        INSERT INTO users (first_name, last_name, email, gender, age, available_credits)
         OUTPUT INSERTED.user_id
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     """
     user_result = db.execute_query(
         insert_user_query,
-        (user.first_name, user.last_name, user.email, user.gender, user.age)
+        (user.first_name, user.last_name, user.email, user.gender, user.age, 100)
     )
     
     if not user_result:
@@ -168,7 +168,7 @@ async def get_user_profile(credentials: HTTPAuthorizationCredentials = Depends(s
     
     # Get user data
     profile_query = """
-        SELECT u.user_id, u.first_name, u.last_name, u.email, u.gender, u.age, u.created_at,
+        SELECT u.user_id, u.first_name, u.last_name, u.email, u.gender, u.age, u.available_credits, u.created_at,
                a.username
         FROM users u
         INNER JOIN authentication a ON u.user_id = a.user_id
