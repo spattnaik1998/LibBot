@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import timedelta
@@ -8,6 +8,7 @@ from config import settings
 from database import db
 from models import UserRegistration, UserLogin, UserResponse, Token
 from auth import verify_password, get_password_hash, create_access_token, verify_token
+from chatbot_api import router as chatbot_router
 
 app = FastAPI(
     title="Book Project Authentication API",
@@ -18,19 +19,31 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],  # Allow all origins for development
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Security scheme
 security = HTTPBearer()
 
+# Include chatbot routes
+app.include_router(chatbot_router)
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
     return {"message": "Book Project Authentication API is running"}
+
+@app.options("/{full_path:path}")
+async def preflight_handler(full_path: str, response: Response):
+    """Handle CORS preflight requests"""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return {"message": "OK"}
 
 @app.post("/register", response_model=dict)
 async def register_user(user: UserRegistration):
