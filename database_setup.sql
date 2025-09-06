@@ -63,4 +63,38 @@ BEGIN
 END
 GO
 
+-- Create book_names table for the book inventory
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='book_names' AND xtype='U')
+BEGIN
+    CREATE TABLE book_names (
+        book_id INT IDENTITY(1,1) PRIMARY KEY,
+        title NVARCHAR(500) NOT NULL,
+        author NVARCHAR(200) NOT NULL,
+        Qty INT DEFAULT 20 NOT NULL CHECK (Qty >= 0),
+        created_at DATETIME2 DEFAULT GETDATE(),
+        updated_at DATETIME2 DEFAULT GETDATE()
+    );
+    
+    PRINT 'book_names table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'book_names table already exists';
+END
+GO
+
+-- Create indexes for better performance on book_names table
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_book_names_title')
+BEGIN
+    CREATE INDEX IX_book_names_title ON book_names(title);
+    PRINT 'Index on book_names.title created';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_book_names_author')
+BEGIN
+    CREATE INDEX IX_book_names_author ON book_names(author);
+    PRINT 'Index on book_names.author created';
+END
+GO
+
 PRINT 'Database setup completed successfully!';

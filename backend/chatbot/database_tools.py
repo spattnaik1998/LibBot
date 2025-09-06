@@ -106,13 +106,25 @@ class ChatbotDatabase:
     def buy_book_transaction(self, user_id: int, book_title: str, quantity: int) -> Dict[str, Any]:
         """Execute buy book transaction (deduct quantity and credits)"""
         try:
+            # Check purchase limit - maximum 5 copies per book per transaction
+            if quantity > 5:
+                return {"success": False, "error": "Maximum purchase limit is 5 copies per book"}
+            
             # Get book details
             book = self.get_book_by_title(book_title)
             if not book:
                 return {"success": False, "error": "Book not found"}
             
-            if book["Qty"] < quantity:
-                return {"success": False, "error": f"Not enough books in stock. Available: {book['Qty']}"}
+            # Check stock availability and provide detailed feedback
+            available_qty = book["Qty"]
+            if available_qty == 0:
+                return {"success": False, "error": f"'{book['title']}' is currently out of stock. Please try again later."}
+            
+            if available_qty < quantity:
+                if available_qty == 1:
+                    return {"success": False, "error": f"Not enough books in stock. Only 1 copy of '{book['title']}' remaining. Please reduce your quantity or try again later."}
+                else:
+                    return {"success": False, "error": f"Not enough books in stock. Only {available_qty} copies of '{book['title']}' remaining. Please reduce your quantity to {available_qty} or fewer."}
             
             # Get user credits
             current_credits = self.get_user_credits(user_id)
@@ -126,6 +138,13 @@ class ChatbotDatabase:
             # Update book quantity - use the exact title from the database record
             new_book_qty = book["Qty"] - quantity
             actual_book_title = book["title"]  # Use exact title from database
+            
+            # Check if book will go out of stock after purchase, and restock if needed
+            restock_occurred = False
+            if new_book_qty == 0:
+                new_book_qty = 20  # Automatic restocking to 20 copies
+                restock_occurred = True
+            
             if not self.update_book_quantity(actual_book_title, new_book_qty):
                 return {"success": False, "error": "Failed to update book quantity"}
             
@@ -136,14 +155,18 @@ class ChatbotDatabase:
                 self.update_book_quantity(actual_book_title, book["Qty"])
                 return {"success": False, "error": "Failed to update user credits"}
             
-            return {
+            # Prepare success response
+            result = {
                 "success": True,
                 "book_title": book["title"],
                 "quantity_purchased": quantity,
                 "credits_spent": total_cost,
                 "remaining_credits": new_credits,
-                "remaining_book_qty": new_book_qty
+                "remaining_book_qty": new_book_qty,
+                "restock_occurred": restock_occurred
             }
+            
+            return result
             
         except Exception as e:
             return {"success": False, "error": f"Transaction failed: {str(e)}"}
@@ -171,13 +194,25 @@ class ChatbotDatabase:
                 if quantity <= 0:
                     return {"success": False, "error": f"Invalid quantity for '{book_title}': {quantity}"}
                 
+                # Check purchase limit - maximum 5 copies per book per transaction
+                if quantity > 5:
+                    return {"success": False, "error": f"Maximum purchase limit is 5 copies per book. '{book_title}' requested: {quantity}"}
+                
                 # Get book details
                 book = self.get_book_by_title(book_title)
                 if not book:
                     return {"success": False, "error": f"Book not found: '{book_title}'"}
                 
-                if book["Qty"] < quantity:
-                    return {"success": False, "error": f"Not enough copies of '{book['title']}'. Available: {book['Qty']}, Requested: {quantity}"}
+                # Check stock availability with detailed feedback
+                available_qty = book["Qty"]
+                if available_qty == 0:
+                    return {"success": False, "error": f"'{book['title']}' is currently out of stock. Please remove it from your order or try again later."}
+                
+                if available_qty < quantity:
+                    if available_qty == 1:
+                        return {"success": False, "error": f"Not enough copies of '{book['title']}'. Only 1 copy remaining, but {quantity} requested. Please reduce quantity to 1."}
+                    else:
+                        return {"success": False, "error": f"Not enough copies of '{book['title']}'. Only {available_qty} copies remaining, but {quantity} requested. Please reduce quantity to {available_qty} or fewer."}
                 
                 cost = quantity * 20  # 20 credits per book
                 total_cost += cost
@@ -199,6 +234,7 @@ class ChatbotDatabase:
             
             # Execute all transactions atomically
             purchased_books = []
+            books_restocked = []
             
             # Update book quantities
             for book_data in validated_books:
@@ -207,6 +243,14 @@ class ChatbotDatabase:
                 actual_title = book_data['actual_title']
                 
                 new_book_qty = book["Qty"] - quantity
+                restock_occurred = False
+                
+                # Check if book will go out of stock after purchase, and restock if needed
+                if new_book_qty == 0:
+                    new_book_qty = 20  # Automatic restocking to 20 copies
+                    restock_occurred = True
+                    books_restocked.append(actual_title)
+                
                 if not self.update_book_quantity(actual_title, new_book_qty):
                     # Rollback previous book quantity updates
                     for prev_book in purchased_books:
@@ -215,10 +259,12 @@ class ChatbotDatabase:
                 
                 purchased_books.append({
                     'title': actual_title,
+                    'actual_title': actual_title,  # For consistent rollback
                     'quantity_purchased': quantity,
                     'cost': book_data['cost'],
                     'remaining_qty': new_book_qty,
-                    'original_qty': book["Qty"]  # For rollback
+                    'original_qty': book["Qty"],  # For rollback
+                    'restock_occurred': restock_occurred
                 })
             
             # Update user credits
@@ -226,7 +272,7 @@ class ChatbotDatabase:
             if not self.update_user_credits(user_id, new_credits):
                 # Rollback all book quantity changes
                 for book_data in purchased_books:
-                    self.update_book_quantity(book_data['title'], book_data['original_qty'])
+                    self.update_book_quantity(book_data['actual_title'], book_data['original_qty'])
                 return {"success": False, "error": "Failed to update user credits"}
             
             return {
@@ -235,6 +281,7 @@ class ChatbotDatabase:
                 "total_books_purchased": sum(book['quantity_purchased'] for book in purchased_books),
                 "total_credits_spent": total_cost,
                 "remaining_credits": new_credits,
+                "books_restocked": books_restocked,
                 "transaction_summary": f"Successfully purchased {len(purchased_books)} different books"
             }
             

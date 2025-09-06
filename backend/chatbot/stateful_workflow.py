@@ -1,7 +1,7 @@
 """Stateful chatbot workflow with proper session management"""
 import os
 import re
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from .database_tools import chatbot_db
@@ -70,7 +70,7 @@ class StatefulChatbotWorkflow:
             }
     
     def _handle_initial_state(self, session, message: str) -> Dict[str, Any]:
-        """Handle messages when in initial state"""
+        """Handle messages when in initial state - command-based system"""
         user_message = message.lower().strip()
         
         if user_message == "query":
@@ -107,9 +107,28 @@ class StatefulChatbotWorkflow:
             }
             
         else:
-            # Try natural language understanding for direct commands
-            return self._try_natural_language(session, message)
-    
+            return self._handle_invalid_command(session, message)
+
+    def _handle_invalid_command(self, session, message: str) -> Dict[str, Any]:
+        """Handle invalid commands with clear guidance"""
+        
+        response = """Please provide a suitable request. I can only help with these three commands:
+
+🔍 **query** - Search for books in our catalog
+💰 **buy** - Purchase books (20 credits per book)  
+💳 **buy credits** - Add more credits to your account
+
+Please type one of these commands to get started!"""
+        
+        return {
+            "success": True,
+            "response": response,
+            "current_agent": "master",
+            "conversation_step": "initial",
+            "conversation_history": session.conversation_history,
+            "transaction_result": None
+        }
+
     def _handle_search_input(self, session, search_term: str) -> Dict[str, Any]:
         """Handle book search input from Query Agent"""
         try:
@@ -142,7 +161,7 @@ class StatefulChatbotWorkflow:
                 search_description = f"books matching '{search_term}'"
             
             if not books:
-                response_text = f"I couldn't find any {search_description}. Please try a different search term or check the spelling.\n\nYou can:\n• Try different keywords\n• Check for typos\n• Use author names or book titles\n• Try partial matches\n\nOr type a new command: **query**, **buy**, **return**, or **buy credits**"
+                response_text = f"There are no books by this author."
             elif len(books) == 1:
                 book = books[0]
                 response_text = f"📖 **Found Book:**\n\n**{book['title']}** by {book.get('author', 'Unknown Author')}\n• Quantity available: **{book['Qty']} copies**\n• Price: **20 credits per copy**\n\nWould you like to:\n• Search for another book (just type the title)\n• **buy** this book\n• Try another command: **return** or **buy credits**"
@@ -203,13 +222,17 @@ class StatefulChatbotWorkflow:
             result = chatbot_db.buy_book_transaction(session.user_id, book_title, quantity)
             
             if result["success"]:
+                restock_message = ""
+                if result.get("restock_occurred", False):
+                    restock_message = f"\n\n📦 **Restocked!** {result['book_title']} was automatically restocked to 20 copies since it went out of stock."
+                
                 response_text = f"""✅ **Purchase Successful!**
 
 📖 **Book:** {result['book_title']}
 📦 **Quantity purchased:** {result['quantity_purchased']} copies
 💰 **Credits spent:** {result['credits_spent']} credits
 💳 **Remaining credits:** {result['remaining_credits']} credits
-📚 **Books still available:** {result['remaining_book_qty']} copies
+📚 **Books still available:** {result['remaining_book_qty']} copies{restock_message}
 
 Thank you for your purchase! 
 
@@ -339,30 +362,6 @@ Please try again or contact support."""
         else:
             return self._handle_invalid_command(session, message)
     
-    def _handle_invalid_command(self, session, message: str) -> Dict[str, Any]:
-        """Handle invalid commands with helpful guidance"""
-        
-        response_text = f"""I can help you with these three commands:
-
-🔍 **query** - Search for books in our catalog
-💰 **buy** - Purchase books (20 credits per book)  
-💳 **buy credits** - Add more credits to your account
-
-You can also:
-• Type a book title directly to search
-• Say "buy Book Title, 2 copies" to purchase
-
-Please choose one of these options!"""
-        
-        return {
-            "success": True,
-            "response": response_text,
-            "current_agent": "master",
-            "conversation_step": "initial",
-            "conversation_history": session.conversation_history,
-            "transaction_result": None
-        }
-    
     def _handle_invalid_state(self, session, message: str) -> Dict[str, Any]:
         """Handle invalid conversation state"""
         session.set_state(ConversationState.INITIAL)
@@ -436,8 +435,12 @@ Examples:
     
     def get_welcome_message(self, username: str) -> str:
         """Get welcome message for new users"""
-        return f"""Welcome to the Book Store, {username}.
+        return f"""👋 **Welcome to our Book Store, {username}!**
 
-I can help you search for books, make purchases, and manage your account. Just tell me what you need in natural language.
+I can help you with three simple commands:
 
-What can I help you with today?"""
+🔍 **query** - Search for books in our catalog
+💰 **buy** - Purchase books (20 credits per book)  
+💳 **buy credits** - Add more credits to your account
+
+Please type one of these commands to get started!"""

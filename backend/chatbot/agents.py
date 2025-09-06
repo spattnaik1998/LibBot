@@ -250,13 +250,17 @@ Please try again with the correct format."""
             state.transaction_result = result
             
             if result["success"]:
+                restock_message = ""
+                if result.get("restock_occurred", False):
+                    restock_message = f"\n\n📦 **Restocked!** {result['book_title']} was automatically restocked to 20 copies since it went out of stock."
+                
                 state.agent_response = f"""✅ **Purchase Successful!**
 
 📖 **Book:** {result['book_title']}
 📦 **Quantity:** {result['quantity_purchased']} copies
 💰 **Credits spent:** {result['credits_spent']} credits
 💳 **Remaining credits:** {result['remaining_credits']} credits
-📚 **Still available:** {result['remaining_book_qty']} copies
+📚 **Still available:** {result['remaining_book_qty']} copies{restock_message}
 
 Thank you for your purchase!"""
             else:
@@ -269,7 +273,13 @@ Thank you for your purchase!"""
             if result["success"]:
                 books_summary = ""
                 for book in result['purchased_books']:
-                    books_summary += f"• **{book['title']}** - {book['quantity_purchased']} copies ({book['cost']} credits)\n"
+                    restock_note = " (Restocked to 20)" if book.get('restock_occurred', False) else ""
+                    books_summary += f"• **{book['title']}** - {book['quantity_purchased']} copies ({book['cost']} credits){restock_note}\n"
+                
+                restock_message = ""
+                if result.get('books_restocked'):
+                    restocked_list = ", ".join(result['books_restocked'])
+                    restock_message = f"\n\n📦 **Automatic Restocking:** {restocked_list} {'was' if len(result['books_restocked']) == 1 else 'were'} automatically restocked to 20 copies."
                 
                 state.agent_response = f"""✅ **Multi-Book Purchase Successful!**
 
@@ -278,7 +288,7 @@ Thank you for your purchase!"""
 📊 **Transaction summary:**
 • Total books: {result['total_books_purchased']} copies
 • Total credits spent: {result['total_credits_spent']} credits
-• Remaining credits: {result['remaining_credits']} credits
+• Remaining credits: {result['remaining_credits']} credits{restock_message}
 
 Thank you for your purchase!"""
             else:
