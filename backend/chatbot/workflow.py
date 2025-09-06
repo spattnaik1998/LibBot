@@ -2,7 +2,7 @@
 from typing import Dict, Any
 from langgraph.graph import StateGraph, START, END
 from .state import ChatbotState, AgentState
-from .agents import MasterAgent, QueryAgent, BuyAgent, ReturnAgent, CreditAgent
+from .agents import MasterAgent, QueryAgent, BuyAgent, CreditAgent
 
 class ChatbotWorkflow:
     """Main workflow orchestrator using LangGraph"""
@@ -14,7 +14,6 @@ class ChatbotWorkflow:
         self.master_agent = MasterAgent(openai_api_key)
         self.query_agent = QueryAgent(openai_api_key)
         self.buy_agent = BuyAgent(openai_api_key)
-        self.return_agent = ReturnAgent(openai_api_key)
         self.credit_agent = CreditAgent(openai_api_key)
         
         # Build the workflow graph
@@ -30,7 +29,6 @@ class ChatbotWorkflow:
         workflow.add_node("master", self._master_node)
         workflow.add_node("query", self._query_node)
         workflow.add_node("buy", self._buy_node)
-        workflow.add_node("return", self._return_node)
         workflow.add_node("credit", self._credit_node)
         
         # Set entry point
@@ -43,7 +41,6 @@ class ChatbotWorkflow:
             {
                 "query": "query",
                 "buy": "buy", 
-                "return": "return",
                 "credit": "credit",
                 "end": END
             }
@@ -52,7 +49,6 @@ class ChatbotWorkflow:
         # All subordinate agents return to master
         workflow.add_edge("query", "master")
         workflow.add_edge("buy", "master")
-        workflow.add_edge("return", "master")
         workflow.add_edge("credit", "master")
         
         return workflow.compile()
@@ -69,9 +65,6 @@ class ChatbotWorkflow:
         """Buy agent node"""
         return self.buy_agent.process(state)
     
-    def _return_node(self, state: ChatbotState) -> ChatbotState:
-        """Return agent node"""
-        return self.return_agent.process(state)
     
     def _credit_node(self, state: ChatbotState) -> ChatbotState:
         """Credit agent node"""
@@ -129,7 +122,6 @@ I'm your personal book assistant. I can help you with:
 
 🔍 **query** - Search for books in our catalog
 💰 **buy** - Purchase books (20 credits per book)
-📚 **return** - Return books for refund
 💳 **buy credits** - Add more credits to your account
 
-Please type one of the four commands above to get started!"""
+Please type one of the three commands above to get started!"""

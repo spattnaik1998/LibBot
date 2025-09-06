@@ -315,12 +315,13 @@ Please try again or contact support."""
                 "transaction_result": None
             }
     
+    
     def _try_natural_language(self, session, message: str) -> Dict[str, Any]:
         """Try to understand natural language input and route appropriately"""
         lower_msg = message.lower()
         
-        # Check for direct book search (no buy/return keywords)
-        if not any(keyword in lower_msg for keyword in ["buy", "purchase", "return", "refund", "credit"]):
+        # Check for direct book search (no buy/credit keywords)
+        if not any(keyword in lower_msg for keyword in ["buy", "purchase", "credit"]):
             # Treat as book search
             session.set_state(ConversationState.WAITING_FOR_SEARCH)
             return self._handle_search_input(session, message)
@@ -329,11 +330,6 @@ Please try again or contact support."""
         elif any(keyword in lower_msg for keyword in ["buy", "purchase"]) and any(keyword in lower_msg for keyword in ["copy", "copies", "book"]):
             session.set_state(ConversationState.WAITING_FOR_BUY_DETAILS)
             return self._handle_buy_input(session, message)
-        
-        # Check for return-like requests  
-        elif any(keyword in lower_msg for keyword in ["return", "refund"]):
-            session.set_state(ConversationState.WAITING_FOR_RETURN_DETAILS)
-            return self._handle_return_input(session, message)
         
         # Check for credit requests
         elif any(keyword in lower_msg for keyword in ["credit", "credits"]) and re.search(r'\d+', message):
@@ -440,14 +436,8 @@ Examples:
     
     def get_welcome_message(self, username: str) -> str:
         """Get welcome message for new users"""
-        return f"""👋 **Welcome to the Book Store, {username}!**
+        return f"""Welcome to the Book Store, {username}.
 
-I'm your personal book assistant. I can help you with:
+I can help you search for books, make purchases, and manage your account. Just tell me what you need in natural language.
 
-🔍 **query** - Search for books in our catalog
-💰 **buy** - Purchase books (20 credits per book)
-💳 **buy credits** - Add more credits to your account
-
-**Pro tip:** You can also type book titles directly to search, or say things like "buy The Great Gatsby, 2 copies"
-
-Please type one of the commands above to get started!"""
+What can I help you with today?"""

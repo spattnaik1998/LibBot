@@ -40,14 +40,12 @@ class SimpleChatbotWorkflow:
                 return self.handle_query_start(user_id, username)
             elif user_message == "buy":
                 return self.handle_buy_start(user_id, username)
-            elif user_message == "return":
-                return self.handle_return_start(user_id, username)
             elif user_message == "buy credits":
                 return self.handle_credits_start(user_id, username)
             else:
                 # Check if this looks like a search query (for Query agent)
-                if len(message.strip()) > 0 and not user_message in ["query", "buy", "return", "buy credits"]:
-                    # Could be a book search, buy request, return request, or credits request
+                if len(message.strip()) > 0 and not user_message in ["query", "buy", "buy credits"]:
+                    # Could be a book search, buy request, or credits request
                     return self.handle_natural_language_input(user_id, username, message)
                 else:
                     return self.handle_invalid_command(user_id, username, message)
@@ -91,19 +89,6 @@ class SimpleChatbotWorkflow:
             "transaction_result": None
         }
     
-    def handle_return_start(self, user_id: int, username: str) -> Dict[str, Any]:
-        """Handle return command"""
-        return {
-            "success": True,
-            "response": "I'll help you return a book. Please tell me the book title and quantity you want to return (e.g., 'Pride and Prejudice, 1 copy').",
-            "current_agent": "return",
-            "conversation_step": "waiting_for_return_details",
-            "conversation_history": [
-                {"role": "user", "content": "return"},
-                {"role": "assistant", "content": "I'll help you return a book. Please tell me the book title and quantity you want to return (e.g., 'Pride and Prejudice, 1 copy')."}
-            ],
-            "transaction_result": None
-        }
     
     def handle_credits_start(self, user_id: int, username: str) -> Dict[str, Any]:
         """Handle buy credits command"""
@@ -130,9 +115,6 @@ class SimpleChatbotWorkflow:
         elif self.looks_like_buy_request(message):
             return self.handle_buy_request(user_id, username, message)
         
-        # Try to detect if this is a return request
-        elif self.looks_like_return_request(message):
-            return self.handle_return_request(user_id, username, message)
         
         # Try to detect if this is a credits request
         elif self.looks_like_credits_request(message):
@@ -143,9 +125,9 @@ class SimpleChatbotWorkflow:
     
     def looks_like_book_search(self, message: str) -> bool:
         """Check if message looks like a book search"""
-        # If it's just text without buy/return/credit keywords, assume it's a search
+        # If it's just text without buy/credit keywords, assume it's a search
         lower_msg = message.lower()
-        if any(keyword in lower_msg for keyword in ["buy", "purchase", "return", "refund", "credit"]):
+        if any(keyword in lower_msg for keyword in ["buy", "purchase", "credit"]):
             return False
         return True
     
@@ -154,10 +136,6 @@ class SimpleChatbotWorkflow:
         lower_msg = message.lower()
         return any(keyword in lower_msg for keyword in ["buy", "purchase", "copies", "copy"])
     
-    def looks_like_return_request(self, message: str) -> bool:
-        """Check if message looks like a return request"""
-        lower_msg = message.lower()
-        return any(keyword in lower_msg for keyword in ["return", "refund"])
     
     def looks_like_credits_request(self, message: str) -> bool:
         """Check if message looks like a credits request"""
@@ -310,24 +288,22 @@ Your account has been updated!"""
     
     def handle_invalid_command(self, user_id: int, username: str, message: str) -> Dict[str, Any]:
         """Handle invalid commands"""
-        system_prompt = f"""You are a master chatbot agent for a book store. You only accept these four commands:
+        system_prompt = f"""You are a master chatbot agent for a book store. You only accept these three commands:
         - "query" - to search for books
         - "buy" - to purchase books
-        - "return" - to return books  
         - "buy credits" - to purchase more credits
         
         The user said: "{message}"
         
-        Politely explain that you only accept the four specific commands listed above. Ask them to choose one of these options."""
+        Politely explain that you only accept the three specific commands listed above. Ask them to choose one of these options."""
         
         try:
             response = self.call_llm(system_prompt, message)
         except:
-            response = """I can only help with these four commands:
+            response = """I can only help with these three commands:
 
 🔍 **query** - Search for books in our catalog
 💰 **buy** - Purchase books (20 credits per book)  
-📚 **return** - Return books for refund
 💳 **buy credits** - Add more credits to your account
 
 Please type one of these commands to get started!"""
@@ -365,12 +341,8 @@ Please type one of these commands to get started!"""
     
     def get_welcome_message(self, username: str) -> str:
         """Get welcome message for new users"""
-        return f"""👋 **Welcome to the Book Store, {username}!**
+        return f"""Welcome to the Book Store, {username}.
 
-I'm your personal book assistant. I can help you with:
+I can help you search for books, make purchases, and manage your account. Just tell me what you need in natural language.
 
-🔍 **query** - Search for books in our catalog
-💰 **buy** - Purchase books (20 credits per book)
-💳 **buy credits** - Add more credits to your account
-
-Please type one of the three commands above to get started!"""
+What can I help you with today?"""

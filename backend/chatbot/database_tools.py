@@ -148,6 +148,100 @@ class ChatbotDatabase:
         except Exception as e:
             return {"success": False, "error": f"Transaction failed: {str(e)}"}
     
+    def buy_multiple_books_transaction(self, user_id: int, book_requests: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Execute multiple book purchases in a single atomic transaction
+        
+        Args:
+            user_id: The user making the purchase
+            book_requests: List of dicts with keys: 'title', 'quantity'
+                          Example: [{'title': 'Book 1', 'quantity': 2}, {'title': 'Book 2', 'quantity': 1}]
+        
+        Returns:
+            Dict with success status and transaction details
+        """
+        try:
+            # Validate all books exist and have sufficient quantity first
+            validated_books = []
+            total_cost = 0
+            
+            for request in book_requests:
+                book_title = request['title']
+                quantity = request['quantity']
+                
+                if quantity <= 0:
+                    return {"success": False, "error": f"Invalid quantity for '{book_title}': {quantity}"}
+                
+                # Get book details
+                book = self.get_book_by_title(book_title)
+                if not book:
+                    return {"success": False, "error": f"Book not found: '{book_title}'"}
+                
+                if book["Qty"] < quantity:
+                    return {"success": False, "error": f"Not enough copies of '{book['title']}'. Available: {book['Qty']}, Requested: {quantity}"}
+                
+                cost = quantity * 20  # 20 credits per book
+                total_cost += cost
+                
+                validated_books.append({
+                    'book': book,
+                    'requested_quantity': quantity,
+                    'cost': cost,
+                    'actual_title': book['title']  # Use exact title from database
+                })
+            
+            # Check user has enough credits for total purchase
+            current_credits = self.get_user_credits(user_id)
+            if current_credits is None:
+                return {"success": False, "error": "User not found"}
+            
+            if current_credits < total_cost:
+                return {"success": False, "error": f"Not enough credits. Required: {total_cost}, Available: {current_credits}"}
+            
+            # Execute all transactions atomically
+            purchased_books = []
+            
+            # Update book quantities
+            for book_data in validated_books:
+                book = book_data['book']
+                quantity = book_data['requested_quantity']
+                actual_title = book_data['actual_title']
+                
+                new_book_qty = book["Qty"] - quantity
+                if not self.update_book_quantity(actual_title, new_book_qty):
+                    # Rollback previous book quantity updates
+                    for prev_book in purchased_books:
+                        self.update_book_quantity(prev_book['actual_title'], prev_book['original_qty'])
+                    return {"success": False, "error": f"Failed to update quantity for '{actual_title}'"}
+                
+                purchased_books.append({
+                    'title': actual_title,
+                    'quantity_purchased': quantity,
+                    'cost': book_data['cost'],
+                    'remaining_qty': new_book_qty,
+                    'original_qty': book["Qty"]  # For rollback
+                })
+            
+            # Update user credits
+            new_credits = current_credits - total_cost
+            if not self.update_user_credits(user_id, new_credits):
+                # Rollback all book quantity changes
+                for book_data in purchased_books:
+                    self.update_book_quantity(book_data['title'], book_data['original_qty'])
+                return {"success": False, "error": "Failed to update user credits"}
+            
+            return {
+                "success": True,
+                "purchased_books": purchased_books,
+                "total_books_purchased": sum(book['quantity_purchased'] for book in purchased_books),
+                "total_credits_spent": total_cost,
+                "remaining_credits": new_credits,
+                "transaction_summary": f"Successfully purchased {len(purchased_books)} different books"
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": f"Multiple book transaction failed: {str(e)}"}
+    
+
     def add_credits_transaction(self, user_id: int, credits_to_add: int) -> Dict[str, Any]:
         """Add credits to user account"""
         try:

@@ -85,27 +85,57 @@ The frontend will run on `http://localhost:3000`
 
 ## Chatbot Features
 
-### Master Agent Commands
+### Intelligent Natural Language Processing
 
-The chatbot accepts exactly three commands:
+The chatbot now uses **GPT-4o powered natural language understanding** - no rigid commands required! Just talk naturally:
 
-1. **`query`** - Search for books in the catalog
-2. **`buy`** - Purchase books (costs 20 credits per book)
-3. **`buy credits`** - Add more credits to your account
+#### 🎯 **Smart Intent Detection**
+- Understands conversational requests
+- Extracts relevant information automatically
+- Routes to appropriate specialized agents
+- Handles greetings, help requests, and clarifications
+
+#### 📚 **Search Examples**
+- *"I want to find books by Stephen King"*
+- *"Show me fantasy novels"*  
+- *"Do you have Harry Potter?"*
+- *"Search for mystery books"*
+
+#### 💰 **Purchase Examples**
+- *"I want to buy Harry Potter"*
+- *"Can you help me purchase The Great Gatsby, 2 copies?"*
+- *"Buy Gatsby 2 and Pride and Prejudice 1"*
+- *"I need to buy multiple books: Book A: 3, Book B: 1"*
+
+#### 💳 **Credit Examples** 
+- *"I need 50 more credits"*
+- *"Add credits to my account"*
+- *"Can I buy 100 credits?"*
 
 ### Agent Workflows
 
-#### Query Agent
-- User types: `query`
-- Bot asks: "What book are you looking for?"
-- User provides book title (partial matches supported)
-- Bot returns matching books with availability
+#### Master Agent (ENHANCED!)
+- **Intelligence**: Uses GPT-4o for intent analysis and information extraction
+- **Knowledge Base**: Comprehensive understanding of system capabilities
+- **Q&A Capabilities**: Answers questions about features directly (no routing needed)
+- **Smart Routing**: Automatically directs operational requests to specialized agents
+- **Dynamic Responses**: Generates contextual, helpful responses in real-time
+- **Examples Handled Directly**:
+  - *"How can I buy multiple books?"* → Detailed format explanations
+  - *"How much do books cost?"* → Credit system breakdown
+  - *"What can you do?"* → Comprehensive capability overview
+  - *"Explain how credits work"* → Full credit system explanation
 
-#### Buy Agent
-- User types: `buy`
-- Bot asks: "Please tell me the book title and quantity"
-- User provides: "Book Title, 2 copies"
-- Bot processes purchase, deducts credits and inventory
+#### Query Agent
+- Receives natural search queries from Master Agent
+- Supports partial matches, author searches, genre searches  
+- Returns matching books with availability information
+
+#### Buy Agent (Enhanced)
+- Handles both single and multiple book purchases
+- **Single book:** Extracted from natural language requests
+- **Multiple books:** Supports various formats automatically parsed
+- **Atomic transactions:** All-or-nothing purchase processing
 
 #### Credit Agent
 - User types: `buy credits`
@@ -127,17 +157,63 @@ All chatbot endpoints require Bearer token authentication.
 
 The chatbot performs atomic transactions:
 
-- **Buy Transaction**: Deducts book quantity AND user credits (rollback on failure)
+- **Single Book Purchase**: Deducts book quantity AND user credits (rollback on failure)
+- **Multiple Book Purchase**: Processes all books atomically - either all succeed or all fail with complete rollback
 - **Credit Transaction**: Adds credits to user account
+
+### Conversational AI Features
+
+The chatbot provides a **natural, intelligent conversation experience**:
+
+1. **Contextual Understanding**:
+   - Remembers conversation context
+   - Asks clarifying questions when needed
+   - Provides helpful suggestions and examples
+
+2. **Flexible Input Processing**:
+   - No rigid command syntax required
+   - Understands typos and variations
+   - Handles incomplete information gracefully
+
+3. **Smart Information Extraction**:
+   - Automatically extracts book titles, quantities, and authors
+   - Detects purchase intent vs. search intent vs. help requests
+   - Processes multiple requests in single messages
+
+4. **Proactive Assistance**:
+   - Offers helpful suggestions
+   - Explains available options
+   - Guides users through complex transactions
+
+### Enhanced Buy Features
+
+The buy system now supports:
+
+1. **Multiple Book Formats:**
+   - **Semicolon separated:** `"Book 1, 2 copies; Book 2, 1 copy"`
+   - **Colon format:** `"Harry Potter: 2, Lord of the Rings: 1"`  
+   - **Simple format:** `"Book A: 3, Book B: 1, Book C: 2"`
+   - **Single book:** `"Harry Potter, 2 copies"` or `"Book Title, quantity 3"`
+
+2. **Atomic Multi-Book Transactions:**
+   - Validates ALL books exist and have sufficient quantity before purchase
+   - Checks user has enough credits for total cost
+   - Either completes entire transaction or rolls back completely
+
+3. **Smart Input Parsing:**
+   - Supports various quantity formats (copies, books, numbers)
+   - Handles different separators (semicolons, commas, colons)
+   - Defaults to quantity 1 if not specified
 
 ## Error Handling
 
 The system handles:
-- Invalid commands (politely redirects to valid options)
-- Insufficient credits or inventory
-- Book not found scenarios
-- Database connection failures
-- Token authentication errors
+- **Unclear requests** (asks clarifying questions naturally)
+- **Insufficient credits or inventory** (provides helpful suggestions)
+- **Book not found scenarios** (offers alternatives and search tips)
+- **Database connection failures** (graceful error recovery)
+- **Token authentication errors** (clear re-authentication guidance)
+- **LLM parsing errors** (fallback to helpful default responses)
 
 ## Architecture
 
