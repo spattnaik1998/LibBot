@@ -87,12 +87,11 @@ The frontend will run on `http://localhost:3000`
 
 ### Master Agent Commands
 
-The chatbot accepts exactly four commands:
+The chatbot accepts exactly three commands:
 
 1. **`query`** - Search for books in the catalog
 2. **`buy`** - Purchase books (costs 20 credits per book)
-3. **`return`** - Return books (refunds 20 credits per book)
-4. **`buy credits`** - Add more credits to your account
+3. **`buy credits`** - Add more credits to your account
 
 ### Agent Workflows
 
@@ -107,12 +106,6 @@ The chatbot accepts exactly four commands:
 - Bot asks: "Please tell me the book title and quantity"
 - User provides: "Book Title, 2 copies"
 - Bot processes purchase, deducts credits and inventory
-
-#### Return Agent
-- User types: `return`
-- Bot asks: "Please tell me the book title and quantity to return"
-- User provides: "Book Title, 1 copy"
-- Bot processes return, adds credits and inventory
 
 #### Credit Agent
 - User types: `buy credits`
@@ -135,7 +128,6 @@ All chatbot endpoints require Bearer token authentication.
 The chatbot performs atomic transactions:
 
 - **Buy Transaction**: Deducts book quantity AND user credits (rollback on failure)
-- **Return Transaction**: Adds book quantity AND user credits (rollback on failure)  
 - **Credit Transaction**: Adds credits to user account
 
 ## Error Handling
@@ -175,7 +167,7 @@ User Input → Master Agent → Route to Subordinate Agent → Database Transact
    - Check JWT secret key matches
 
 4. **Chatbot gives unexpected responses**
-   - Verify exactly one of: query, buy, return, buy credits
+   - Verify exactly one of: query, buy, buy credits
    - Check for typos in commands
 
 ### Debug Mode

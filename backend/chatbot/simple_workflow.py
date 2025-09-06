@@ -255,58 +255,6 @@ Thank you for your purchase!"""
                 "transaction_result": None
             }
     
-    def handle_return_request(self, user_id: int, username: str, message: str) -> Dict[str, Any]:
-        """Handle return request"""
-        try:
-            book_title, quantity = self.parse_return_request(message)
-            
-            if not book_title or quantity <= 0:
-                return {
-                    "success": True,
-                    "response": "I need both the book title and quantity to return. Please format like: 'Book Title, 2 copies' or 'Book Title, quantity 1'",
-                    "current_agent": "master",
-                    "conversation_step": "completed",
-                    "conversation_history": [],
-                    "transaction_result": None
-                }
-            
-            result = chatbot_db.return_book_transaction(user_id, book_title, quantity)
-            
-            if result["success"]:
-                response = f"""✅ **Return Successful!**
-
-Book: **{result['book_title']}**
-Quantity returned: {result['quantity_returned']} copies
-Credits refunded: {result['credits_refunded']} credits
-New credit balance: {result['new_credits_total']} credits
-Updated book availability: {result['new_book_qty']} copies
-
-Your return has been processed!"""
-            else:
-                response = f"❌ **Return Failed**: {result['error']}"
-            
-            return {
-                "success": True,
-                "response": response,
-                "current_agent": "master",
-                "conversation_step": "completed",
-                "conversation_history": [
-                    {"role": "user", "content": message},
-                    {"role": "assistant", "content": response}
-                ],
-                "transaction_result": result
-            }
-            
-        except Exception as e:
-            return {
-                "success": False,
-                "response": f"Sorry, I had trouble processing your return: {str(e)}",
-                "current_agent": "master",
-                "conversation_step": "error",
-                "conversation_history": [],
-                "transaction_result": None
-            }
-    
     def handle_credits_request(self, user_id: int, username: str, message: str) -> Dict[str, Any]:
         """Handle credits request"""
         try:
@@ -415,10 +363,6 @@ Please type one of these commands to get started!"""
         book_title = user_input.strip(' ,').strip()
         return book_title, quantity
     
-    def parse_return_request(self, user_input: str) -> tuple[str, int]:
-        """Parse book title and quantity from user input"""
-        return self.parse_buy_request(user_input)  # Same parsing logic
-    
     def get_welcome_message(self, username: str) -> str:
         """Get welcome message for new users"""
         return f"""👋 **Welcome to the Book Store, {username}!**
@@ -427,7 +371,6 @@ I'm your personal book assistant. I can help you with:
 
 🔍 **query** - Search for books in our catalog
 💰 **buy** - Purchase books (20 credits per book)
-📚 **return** - Return books for refund
 💳 **buy credits** - Add more credits to your account
 
-Please type one of the four commands above to get started!"""
+Please type one of the three commands above to get started!"""

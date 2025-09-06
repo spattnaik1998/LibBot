@@ -7,7 +7,6 @@ class ConversationState(str, Enum):
     INITIAL = "initial"
     WAITING_FOR_SEARCH = "waiting_for_search"
     WAITING_FOR_BUY_DETAILS = "waiting_for_buy_details"
-    WAITING_FOR_RETURN_DETAILS = "waiting_for_return_details"
     WAITING_FOR_CREDITS = "waiting_for_credits"
 
 class ChatSession:

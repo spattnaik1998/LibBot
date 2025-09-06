@@ -47,8 +47,6 @@ class StatefulChatbotWorkflow:
                 response = self._handle_search_input(session, message)
             elif session.state == ConversationState.WAITING_FOR_BUY_DETAILS:
                 response = self._handle_buy_input(session, message)
-            elif session.state == ConversationState.WAITING_FOR_RETURN_DETAILS:
-                response = self._handle_return_input(session, message)
             elif session.state == ConversationState.WAITING_FOR_CREDITS:
                 response = self._handle_credits_input(session, message)
             else:
@@ -93,17 +91,6 @@ class StatefulChatbotWorkflow:
                 "response": "Perfect! I'll help you buy a book. Please tell me the book title and quantity you want to purchase (e.g., 'The Great Gatsby, 2 copies').",
                 "current_agent": "buy",
                 "conversation_step": "waiting_for_buy_details",
-                "conversation_history": session.conversation_history,
-                "transaction_result": None
-            }
-            
-        elif user_message == "return":
-            session.set_state(ConversationState.WAITING_FOR_RETURN_DETAILS)
-            return {
-                "success": True,
-                "response": "I'll help you return a book. Please tell me the book title and quantity you want to return (e.g., 'Pride and Prejudice, 1 copy').",
-                "current_agent": "return",
-                "conversation_step": "waiting_for_return_details",
                 "conversation_history": session.conversation_history,
                 "transaction_result": None
             }
@@ -229,7 +216,6 @@ Thank you for your purchase!
 What would you like to do next?
 • **query** - Search for more books
 • **buy** - Purchase another book  
-• **return** - Return a book
 • **buy credits** - Add more credits"""
             else:
                 response_text = f"""❌ **Purchase Failed**
@@ -258,73 +244,6 @@ What would you like to do?
             return {
                 "success": False,
                 "response": f"Sorry, I had trouble processing your purchase: {str(e)}",
-                "current_agent": "master",
-                "conversation_step": "error",
-                "conversation_history": session.conversation_history,
-                "transaction_result": None
-            }
-    
-    def _handle_return_input(self, session, message: str) -> Dict[str, Any]:
-        """Handle return request input from Return Agent"""
-        try:
-            book_title, quantity = self._parse_return_request(message)
-            
-            if not book_title or quantity <= 0:
-                return {
-                    "success": True,
-                    "response": "I need both the book title and quantity to return. Please format like:\n• 'The Great Gatsby, 2 copies'\n• 'Pride and Prejudice, 1 copy'\n• 'Book Title, quantity 1'",
-                    "current_agent": "return",
-                    "conversation_step": "waiting_for_return_details",
-                    "conversation_history": session.conversation_history,
-                    "transaction_result": None
-                }
-            
-            # Execute the return transaction
-            result = chatbot_db.return_book_transaction(session.user_id, book_title, quantity)
-            
-            if result["success"]:
-                response_text = f"""✅ **Return Successful!**
-
-📖 **Book:** {result['book_title']}
-📦 **Quantity returned:** {result['quantity_returned']} copies
-💰 **Credits refunded:** {result['credits_refunded']} credits
-💳 **New credit balance:** {result['new_credits_total']} credits
-📚 **Updated book availability:** {result['new_book_qty']} copies
-
-Your return has been processed!
-
-What would you like to do next?
-• **query** - Search for books
-• **buy** - Purchase a book
-• **return** - Return another book
-• **buy credits** - Add more credits"""
-            else:
-                response_text = f"""❌ **Return Failed**
-
-{result['error']}
-
-What would you like to do?
-• **query** - Search for books
-• **buy** - Purchase books
-• Try another command"""
-            
-            # Reset to initial state
-            session.set_state(ConversationState.INITIAL)
-            
-            return {
-                "success": True,
-                "response": response_text,
-                "current_agent": "master",
-                "conversation_step": "completed",
-                "conversation_history": session.conversation_history,
-                "transaction_result": result
-            }
-            
-        except Exception as e:
-            session.set_state(ConversationState.INITIAL)
-            return {
-                "success": False,
-                "response": f"Sorry, I had trouble processing your return: {str(e)}",
                 "current_agent": "master",
                 "conversation_step": "error",
                 "conversation_history": session.conversation_history,
@@ -427,17 +346,15 @@ Please try again or contact support."""
     def _handle_invalid_command(self, session, message: str) -> Dict[str, Any]:
         """Handle invalid commands with helpful guidance"""
         
-        response_text = f"""I can help you with these four commands:
+        response_text = f"""I can help you with these three commands:
 
 🔍 **query** - Search for books in our catalog
 💰 **buy** - Purchase books (20 credits per book)  
-📚 **return** - Return books for refund
 💳 **buy credits** - Add more credits to your account
 
 You can also:
 • Type a book title directly to search
 • Say "buy Book Title, 2 copies" to purchase
-• Say "return Book Title, 1 copy" to return
 
 Please choose one of these options!"""
         
@@ -473,10 +390,6 @@ Please choose one of these options!"""
         
         book_title = user_input.strip(' ,').strip()
         return book_title, quantity
-    
-    def _parse_return_request(self, user_input: str) -> tuple[str, int]:
-        """Parse book title and quantity from return input"""
-        return self._parse_buy_request(user_input)  # Same parsing logic
     
     def _parse_search_intent(self, search_query: str) -> Dict[str, str]:
         """Use AI to intelligently parse search intent and extract parameters"""
@@ -533,7 +446,6 @@ I'm your personal book assistant. I can help you with:
 
 🔍 **query** - Search for books in our catalog
 💰 **buy** - Purchase books (20 credits per book)
-📚 **return** - Return books for refund
 💳 **buy credits** - Add more credits to your account
 
 **Pro tip:** You can also type book titles directly to search, or say things like "buy The Great Gatsby, 2 copies"

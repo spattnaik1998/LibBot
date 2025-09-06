@@ -148,45 +148,6 @@ class ChatbotDatabase:
         except Exception as e:
             return {"success": False, "error": f"Transaction failed: {str(e)}"}
     
-    def return_book_transaction(self, user_id: int, book_title: str, quantity: int) -> Dict[str, Any]:
-        """Execute return book transaction (add quantity and credits)"""
-        try:
-            # Get book details
-            book = self.get_book_by_title(book_title)
-            if not book:
-                return {"success": False, "error": "Book not found"}
-            
-            # Get user credits
-            current_credits = self.get_user_credits(user_id)
-            if current_credits is None:
-                return {"success": False, "error": "User not found"}
-            
-            # Update book quantity - use the exact title from the database record
-            new_book_qty = book["Qty"] + quantity
-            actual_book_title = book["title"]  # Use exact title from database
-            if not self.update_book_quantity(actual_book_title, new_book_qty):
-                return {"success": False, "error": "Failed to update book quantity"}
-            
-            # Update user credits
-            credits_refunded = quantity * 20  # 20 credits per book
-            new_credits = current_credits + credits_refunded
-            if not self.update_user_credits(user_id, new_credits):
-                # Rollback book quantity change - use exact title for rollback too
-                self.update_book_quantity(actual_book_title, book["Qty"])
-                return {"success": False, "error": "Failed to update user credits"}
-            
-            return {
-                "success": True,
-                "book_title": book["title"],
-                "quantity_returned": quantity,
-                "credits_refunded": credits_refunded,
-                "new_credits_total": new_credits,
-                "new_book_qty": new_book_qty
-            }
-            
-        except Exception as e:
-            return {"success": False, "error": f"Transaction failed: {str(e)}"}
-    
     def add_credits_transaction(self, user_id: int, credits_to_add: int) -> Dict[str, Any]:
         """Add credits to user account"""
         try:

@@ -7,7 +7,6 @@ class AgentState(str, Enum):
     MASTER = "master"
     QUERY = "query"
     BUY = "buy"
-    RETURN = "return"
     CREDIT = "credit"
     END = "end"
 
@@ -17,7 +16,6 @@ class ConversationStep(str, Enum):
     PROCESSING_QUERY = "processing_query"
     WAITING_FOR_BOOK_SEARCH = "waiting_for_book_search"
     WAITING_FOR_BUY_DETAILS = "waiting_for_buy_details"
-    WAITING_FOR_RETURN_DETAILS = "waiting_for_return_details"
     WAITING_FOR_CREDIT_AMOUNT = "waiting_for_credit_amount"
     COMPLETED = "completed"
 
