@@ -123,16 +123,17 @@ class ChatbotDatabase:
             if current_credits < total_cost:
                 return {"success": False, "error": f"Not enough credits. Required: {total_cost}, Available: {current_credits}"}
             
-            # Update book quantity
+            # Update book quantity - use the exact title from the database record
             new_book_qty = book["Qty"] - quantity
-            if not self.update_book_quantity(book_title, new_book_qty):
+            actual_book_title = book["title"]  # Use exact title from database
+            if not self.update_book_quantity(actual_book_title, new_book_qty):
                 return {"success": False, "error": "Failed to update book quantity"}
             
             # Update user credits
             new_credits = current_credits - total_cost
             if not self.update_user_credits(user_id, new_credits):
-                # Rollback book quantity change
-                self.update_book_quantity(book_title, book["Qty"])
+                # Rollback book quantity change - use exact title for rollback too
+                self.update_book_quantity(actual_book_title, book["Qty"])
                 return {"success": False, "error": "Failed to update user credits"}
             
             return {
@@ -160,17 +161,18 @@ class ChatbotDatabase:
             if current_credits is None:
                 return {"success": False, "error": "User not found"}
             
-            # Update book quantity
+            # Update book quantity - use the exact title from the database record
             new_book_qty = book["Qty"] + quantity
-            if not self.update_book_quantity(book_title, new_book_qty):
+            actual_book_title = book["title"]  # Use exact title from database
+            if not self.update_book_quantity(actual_book_title, new_book_qty):
                 return {"success": False, "error": "Failed to update book quantity"}
             
             # Update user credits
             credits_refunded = quantity * 20  # 20 credits per book
             new_credits = current_credits + credits_refunded
             if not self.update_user_credits(user_id, new_credits):
-                # Rollback book quantity change
-                self.update_book_quantity(book_title, book["Qty"])
+                # Rollback book quantity change - use exact title for rollback too
+                self.update_book_quantity(actual_book_title, book["Qty"])
                 return {"success": False, "error": "Failed to update user credits"}
             
             return {
